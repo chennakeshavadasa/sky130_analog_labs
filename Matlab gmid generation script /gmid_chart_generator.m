@@ -1,6 +1,6 @@
 % Define the file path and number of files
 filePath = 'MATLAB Drive/'; % Update this path accordingly
-filePrefix = 'gmid_nmos_'; % Change the file Prefic accordingly when you use svt/hvt pmos/nmos
+filePrefix = 'gmid_nmos_'; % Change the file Prefix accordingly when you use svt/hvt pmos/nmos
 fileSuffix = '_nfet_01v8_lvt_tb.txt'; % Change the file Suffix accordingly when you use svt/hvt pmos/nmos
 numFiles = 5; % Number of files
 
