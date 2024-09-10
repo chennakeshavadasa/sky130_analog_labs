@@ -1,40 +1,136 @@
-import matplotlib.pyplot as plt
-path="/root/.xschem/simulations/"
-# creating vectors for storing vov, gm/id, gm/gds, id/W
-vov=[[],[],[],[],[]]
-gm_id=[[],[],[],[],[]]
-gm_gds=[[],[],[],[],[]]
-id_W=[[],[],[],[],[]]
-W=2e-6
-# read data from the text file 
-for i in range(5):
-    filename=path+"gmid_nmos_"+str(i+1)+"_nfet_01v8_lvt_tb.txt"
-    fID = open(filename,'r')
-    for line in fID:
-        temp=list(map(float,line.strip().split()))
-        if (temp[0]-temp[5])>0:
-            vov[i].append(temp[0]-temp[5])
-            gm_id[i].append(temp[1]/temp[3])
-            gm_gds[i].append(temp[1]/temp[7])
-            id_W[i].append(temp[3]/W)
-fig, ax = plt.subplots(1,3)
-# plot gm/id versus Vov
-ax[0].plot(vov[0], gm_id[0], vov[1], gm_id[1], vov[2], gm_id[2], vov[3], gm_id[3], vov[4], gm_id[4])
-ax[0].legend(["L=0.15u","L=0.3u","L=0.5u","L=1u","L=2u"])
-ax[0].grid()
-ax[0].set(xlabel='Vov', ylabel = 'gm/id')
-ax[0].set_title("gm/id versus V_{ov}")
-# plot gm/gds versus gm/id
-ax[1].plot(gm_id[0], gm_gds[0], gm_id[1], gm_gds[1], gm_id[2], gm_gds[2], gm_id[3], gm_gds[3], gm_id[4], gm_gds[4])
-ax[1].legend(["L=0.15u","L=0.3u","L=0.5u","L=1u","L=2u"])
-ax[1].grid()
-ax[1].set(xlabel='gm/id', ylabel = 'gm/gds')
-ax[1].set_title("gm/gds vs gm/id")
-# plot id/W versus gm/id
-ax[2].plot(gm_id[0], id_W[0], gm_id[1], id_W[1], gm_id[2], id_W[2], gm_id[3], id_W[3], gm_id[4], id_W[4])
-ax[2].legend(["L=0.15u","L=0.3u","L=0.5u","L=1u","L=2u"])
-ax[2].grid()
-ax[2].set(xlabel='gm/id', ylabel = 'id/W')
-ax[2].set_title("id/W vs gm/id")
-plt.show()
-fID.close()
+import matplotlib.pyplot as plt # type: ignore
+from matplotlib.widgets import CheckButtons # type: ignore
+
+# Define the path to the directory
+path = r"xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# Initialize lists for storing results
+vgs = [[] for _ in range(8)]
+gm_id = [[] for _ in range(8)]
+gm_gds = [[] for _ in range(8)]
+id_W = [[] for _ in range(8)]
+ft = [[] for _ in range(8)]      # ft = gm / Cgg
+cgd_cgg = [[] for _ in range(8)] # Cgd / Cgg
+cgs_cgg = [[] for _ in range(8)] # Cgs / Cgg
+W = 2e-6
+
+# Read data from the text files
+for i in range(8):
+    filename = path + "gmid_nmos_" + str(i+1) + "_nfet_01v8_lvt_tb.txt"
+    try:
+        with open(filename, 'r') as fID:
+            for line in fID:
+                try:
+                    temp = list(map(float, line.strip().split()))
+                    if len(temp) >= 14:  # Now we're expecting at least 14 columns
+                        Vgs = temp[0]
+                        gm = temp[1]
+                        id_val = temp[3]
+                        Vth = temp[5]
+                        gds = temp[7]
+                        Cgg = temp[9]  # 10th column is Cgg
+                        Cgs = abs(temp[11]) # 12th column is Cgs
+                        Cgd = abs(temp[13]) # 14th column is Cgd
+
+                        # Calculate Vov
+                        vov_value = Vgs - Vth
+
+                        # Apply the condition Vov > 0
+                        if vov_value > 0:
+                            vgs[i].append(Vgs)
+                            gm_id[i].append(gm / id_val)
+                            gm_gds[i].append(gm / gds)
+                            id_W[i].append(id_val / W)
+                            # print(id_val)
+                            # Calculate ft, Cgd/Cgg, and Cgs/Cgg
+                            ft[i].append(gm / Cgg)
+                            cgd_cgg[i].append(Cgd / Cgg)
+                            cgs_cgg[i].append(Cgs / Cgg)
+                except (ValueError, IndexError) as e:
+                    print(f"Warning: Skipping line due to error: {e}")
+    except FileNotFoundError:
+        print(f"Error: File {filename} not found.")
+    except Exception as e:
+        print(f"Error: An unexpected error occurred with file {filename}: {e}")
+
+# Labels for different transistor lengths
+labels = ['0.15u', '0.35u', '0.5u', '1u', '1.5u', '2u', '2.5u', '3u']
+
+# Function to auto-scale the axes based on visible lines and add margin
+def autoscale_lines(ax, lines, margin=0.05):
+    x_data = []
+    y_data = []
+    
+    # Collect data from visible lines
+    for line in lines:
+        if line.get_visible():
+            x_data.extend(line.get_xdata())
+            y_data.extend(line.get_ydata())
+    
+    if x_data and y_data:  # If there is visible data
+        x_min, x_max = min(x_data), max(x_data)
+        y_min, y_max = min(y_data), max(y_data)
+        
+        # Add margin (percentage of the range)
+        x_margin = (x_max - x_min) * margin
+        y_margin = (y_max - y_min) * margin
+        
+        ax.set_xlim(x_min - x_margin, x_max + x_margin)
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+    else:  # Default to a small range if no data is visible
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+
+# Function to plot with checkboxes for toggling visibility
+def plot_with_checkboxes(x_data, y_data, x_label, y_label, title):
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(left=0.2, right=0.8)  # Adjust for space for checkboxes
+
+    # Plot lines
+    lines = []
+    for i in range(8):
+        line, = ax.plot(x_data[i], y_data[i], marker='o', linestyle='-', label=f"L={labels[i]}")
+        lines.append(line)
+
+    # Set labels, title, and grid
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+    ax.grid(True)
+    ax.legend()
+
+    # Add checkboxes
+    rax = plt.axes([0.82, 0.4, 0.1, 0.4])
+    visibility = [True] * 8  # Initialize all to be visible
+    check = CheckButtons(rax, labels, visibility)
+
+    # Function to handle checkbox toggle and auto-scale
+    def toggle_lines(label):
+        index = labels.index(label)
+        lines[index].set_visible(not lines[index].get_visible())
+        autoscale_lines(ax, lines)  # Auto-scale after toggling
+        plt.draw()
+
+    check.on_clicked(toggle_lines)
+
+    # Initial auto-scaling
+    autoscale_lines(ax, lines)
+    plt.show()
+
+# Plot gm/id versus Vgs
+plot_with_checkboxes(vgs, gm_id, 'Vgs', 'gm/id', 'gm/id versus Vgs')
+
+# Plot gm/gds versus gm/id
+plot_with_checkboxes(gm_id, gm_gds, 'gm/id', 'gm/gds', 'gm/gds versus gm/id')
+
+# Plot id/W versus gm/id
+plot_with_checkboxes(gm_id, id_W, 'gm/id', 'id/W', 'id/W versus gm/id')
+
+# Plot ft = gm / Cgg versus gm/id
+plot_with_checkboxes(gm_id, ft, 'gm/id', 'ft (Hz)', 'ft versus gm/id')
+
+# Plot Cgd / Cgg versus gm/id
+plot_with_checkboxes(gm_id, cgd_cgg, 'gm/id', 'Cgd / Cgg', 'Cgd / Cgg versus gm/id')
+
+# Plot Cgs / Cgg versus gm/id
+plot_with_checkboxes(gm_id, cgs_cgg, 'gm/id', 'Cgs / Cgg', 'Cgs / Cgg versus gm/id')
