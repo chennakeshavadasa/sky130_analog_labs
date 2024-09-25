@@ -18,7 +18,7 @@ W = 2e-6  # SKY130 W
 
 # Read data from the text files
 for i in range(13):
-    filename = path + "gmid_pmos_" + str(i + 1) + "_pfet_01v8_lvt_tb.txt"
+    filename = path + "gmid_nmos_" + str(i + 1) + "_nfet_01v8_lvt_tb.txt"
     try:
         with open(filename, 'r') as fID:
             for line in fID:
